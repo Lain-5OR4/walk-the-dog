@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 // use wasm_bindgen::JsCast;
+use rand::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
@@ -20,15 +21,29 @@ pub fn main_js() -> Result<(), JsValue> {
         .dyn_into::<web_sys::CanvasRenderingContext2d>()
         .unwrap();
 
+    /*
     draw_triangle(&context, [(300.0, 0.0), (0.0, 600.0), (600.0, 600.0)]);
     draw_triangle(&context, [(300.0, 0.0), (150.0, 300.0), (450.0, 300.0)]);
     draw_triangle(&context, [(150.0, 300.0), (0.0, 600.0), (300.0, 600.0)]);
     draw_triangle(&context, [(450.0, 300.0), (300.0, 600.0), (600.0, 600.0)]);
+    */
+    sierpinski(
+        &context,
+        [(300.0, 0.0), (0.0, 600.0), (600.0, 600.0)],
+        (0, 255, 0),
+        5,
+    );
 
     Ok(())
 }
 
-fn draw_triangle(context: &web_sys::CanvasRenderingContext2d, points: [(f64, f64); 3]) {
+fn draw_triangle(
+    context: &web_sys::CanvasRenderingContext2d,
+    points: [(f64, f64); 3],
+    color: (u8, u8, u8),
+) {
+    let color_str = format!("rgb({}, {}, {})", color.0, color.1, color.2);
+    context.set_fill_style(&wasm_bindgen::JsValue::from_str(&color_str));
     let [top, left, right] = points;
     context.move_to(top.0, top.1);
     context.begin_path();
@@ -37,4 +52,46 @@ fn draw_triangle(context: &web_sys::CanvasRenderingContext2d, points: [(f64, f64
     context.line_to(top.0, top.1);
     context.close_path();
     context.stroke();
+    context.fill();
+}
+
+fn midpoint(point_1: (f64, f64), point_2: (f64, f64)) -> (f64, f64) {
+    ((point_1.0 + point_2.0) / 2.0, (point_1.1 + point_2.1) / 2.0)
+}
+
+fn sierpinski(
+    context: &web_sys::CanvasRenderingContext2d,
+    points: [(f64, f64); 3],
+    color: (u8, u8, u8),
+    depth: u8,
+) {
+    if depth == 0 {
+        draw_triangle(context, points, color);
+    } else {
+        let mut rng = rand::thread_rng();
+
+        let random_color = (
+            rng.gen_range(0..255),
+            rng.gen_range(0..255),
+            rng.gen_range(0..255),
+        );
+        let [top, left, right] = points;
+        let left_mid = midpoint(top, left);
+        let right_mid = midpoint(top, right);
+        let bottom_mid = midpoint(left, right);
+
+        sierpinski(context, [top, left_mid, right_mid], random_color, depth - 1);
+        sierpinski(
+            context,
+            [left_mid, left, bottom_mid],
+            random_color,
+            depth - 1,
+        );
+        sierpinski(
+            context,
+            [right_mid, bottom_mid, right],
+            random_color,
+            depth - 1,
+        );
+    }
 }
